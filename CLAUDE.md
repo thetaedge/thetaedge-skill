@@ -31,12 +31,23 @@ The skill interacts with these API groups (see `reference.md` for full details):
 | Ideas | `/api/thetix/ideas` | Read-only trading ideas from reports |
 | Public | `/api/public/...` | Unauthenticated card/collection access |
 
+## Scripts
+
+The `scripts/` directory contains cross-platform and platform-specific helpers:
+
+- **`install.py`** — Cross-platform installer (Python 3.7+, stdlib-only). Auto-detects Claude Code / OpenClaw, installs skill files, and configures credentials. Works on Windows, macOS, and Linux.
+- **`doctor.py`** — Health check that verifies installation, credentials, API connectivity, and permissions. Supports `--json` for CI.
+- **`lib/common.py`** — Shared utilities used by both Python scripts (platform detection, JSON merge, validation).
+- **`install-thetix-skill.sh`** — Bash installer for OpenClaw on Linux/macOS.
+- **`setup-openclaw-vm.sh`** — Ubuntu VM provisioning script for isolated OpenClaw environments.
+- **`clawtunnel.sh`** — SSH tunnel helper for local development with a VM.
+
 ## Development Workflow
 
 1. Edit `SKILL.md` to change the skill instructions agents follow
 2. Edit `reference.md` to update API documentation
 3. Test by invoking the skill in Claude Code with `/thetix`
-4. The `scripts/` directory is for future helper scripts
+4. Run `python3 scripts/doctor.py` to verify the installation
 
 ## Related Projects
 

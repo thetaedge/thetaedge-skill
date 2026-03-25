@@ -18,12 +18,30 @@ This skill exposes five thetix capabilities to AI agents (OpenClaw or Claude Cod
 
 ## Installation
 
-### Claude Code
+### Quick Install (Cross-Platform)
+
+Works on Windows, macOS, and Linux. Requires Python 3.7+ and git.
+
+```bash
+git clone https://github.com/thetaedge/thetaedge-skill.git
+cd thetaedge-skill
+python3 scripts/install.py
+```
+
+The installer auto-detects your agent platform (Claude Code, OpenClaw, or both), installs the skill files, and prompts for your API key. Run `python3 scripts/install.py --help` for all options.
+
+After installation, verify everything is working:
+
+```bash
+python3 scripts/doctor.py
+```
+
+### Claude Code (Manual)
 
 Clone directly into your personal skills directory. Claude Code auto-discovers skills from `~/.claude/skills/`:
 
 ```bash
-git clone https://github.com/thetaedge/thetaedge-skill.git ~/.claude/skills/thetix
+git clone https://github.com/thetaedge/thetaedge-skill.git ~/.claude/skills/thetaedge-skill
 ```
 
 Then add your API key to `~/.claude/settings.json`:
@@ -36,9 +54,7 @@ Then add your API key to `~/.claude/settings.json`:
 }
 ```
 
-This is persistent and works across macOS, Linux, and Windows.
-
-### OpenClaw
+### OpenClaw (Manual)
 
 ```bash
 git clone https://github.com/thetaedge/thetaedge-skill.git
@@ -60,8 +76,15 @@ thetaedge-skill/
 ├── README.md          # This file
 ├── SKILL.md           # Main skill definition (frontmatter + instructions)
 ├── reference.md       # Detailed API reference for thetix endpoints
-├── scripts/           # Helper scripts
-│   └── .gitkeep
+├── scripts/
+│   ├── install.py     # Cross-platform installer (Windows/macOS/Linux)
+│   ├── doctor.py      # Health check and diagnostics
+│   ├── lib/           # Shared Python utilities
+│   ├── install-thetix-skill.sh  # OpenClaw installer (bash)
+│   ├── setup-openclaw-vm.sh     # VM provisioning script
+│   └── clawtunnel.sh            # SSH tunnel helper
+├── docs/
+│   └── vm-setup.md    # VirtualBox VM setup guide
 └── .claude/
     └── settings.local.json
 ```
