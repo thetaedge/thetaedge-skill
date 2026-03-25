@@ -9,7 +9,7 @@ description: >
   (2) Thetix Cards & Boards — create and manage dashboard widgets that materialize data visualizations,
   tables, and analytics from natural language queries;
   (3) Opportunities — screen, calculate, and analyze covered call and cash-secured put options strategies;
-  (4) Accounts — list and create user brokerage accounts (needed for account-scoped queries);
+  (4) Accounts — list user brokerage accounts (needed for account-scoped queries);
   (5) Ideas — retrieve AI-generated trading ideas extracted from daily and onboarding reports,
   with priority, type, and deadline metadata.
   Use this skill when the user asks about finance, investing, trading, portfolios, stocks, options,
@@ -250,25 +250,13 @@ The server fetches current price and premium from market data automatically. Ret
 
 ## Capability 4: Accounts
 
-List and create user brokerage accounts. Account IDs are needed for account-scoped features like opportunities, dashboard queries, and calculators.
+List user brokerage accounts. Account IDs are needed for account-scoped features like opportunities, dashboard queries, and calculators.
 
 ### List Accounts
 
 `GET /api/accounts`
 
 Returns an array of account objects. Automatically filters out deleted and error-status accounts.
-
-### Create Manual Account
-
-`POST /api/accounts`
-
-```json
-{
-  "name": "My Account"
-}
-```
-
-Returns 201 with the new account object. Triggers background onboarding.
 
 ### Key Fields
 

@@ -501,17 +501,6 @@ GET /api/accounts
 ```
 No query parameters. Returns array of account objects for the authenticated user. Automatically excludes deleted accounts and accounts with error setup status.
 
-### Create Account
-```
-POST /api/accounts
-```
-```json
-{
-  "name": "string"
-}
-```
-Returns account object (201 Created). Triggers background onboarding for the new account.
-
 ## Ideas
 
 ### List Ideas
