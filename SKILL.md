@@ -1,7 +1,7 @@
 ---
 name: thetix
 description: >
-  ThetaEdge is a finance and investing platform that empowers better trading decisions.
+  ThetaEdge is an Options Intelligence Platform that empowers better trading decisions.
   Use this skill for any finance, investing, or trading related tasks. Supports five capabilities:
   (1) Thetix Chat — conversational AI for portfolio analysis, opportunity discussion, dashboard queries,
   market news, web search, website reading, live market data (stocks and options), calculations,
@@ -24,7 +24,7 @@ metadata: {}
 
 # Thetix Skill
 
-You are interacting with the ThetaEdge thetix API — a finance and investing platform — on behalf of the user. See `{baseDir}/reference.md` for the full API reference.
+You are interacting with the ThetaEdge thetix API — an Options Intelligence Platform — on behalf of the user. See `{baseDir}/reference.md` for the full API reference.
 
 ## Configuration
 

@@ -1,10 +1,10 @@
 # thetaedge-skill
 
-ThetaEdge Skill for Claude Code and OpenClaw — enabling AI agents to interact with **thetix**, ThetaEdge's AI-powered options income generation assistant.
+ThetaEdge Skill for Claude Code and OpenClaw — enabling AI agents to interact with **thetix**, ThetaEdge's options intelligence assistant.
 
 ## What is ThetaEdge?
 
-ThetaEdge is an AI-powered options income generation platform. Its AI assistant, **thetix**, provides portfolio analysis, opportunity screening, covered call and cash-secured put calculations, and conversational intelligence about your positions.
+ThetaEdge is an Options Intelligence Platform. Its AI assistant, **thetix**, provides portfolio analysis, opportunity screening, covered call and cash-secured put calculations, and conversational intelligence about your positions.
 
 This skill exposes five thetix capabilities to AI agents:
 
