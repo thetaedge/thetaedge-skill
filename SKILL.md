@@ -19,7 +19,16 @@ allowed-tools:
   - Bash
   - Read
   - WebFetch
-metadata: {}
+metadata:
+  env:
+    THETAEDGE_API_KEY:
+      required: true
+      description: "ThetaEdge API key (get from Profile > API Keys)"
+      format: "te_*"
+    THETAEDGE_API_BASE:
+      required: false
+      default: "https://api.thetaedge.ai"
+      description: "ThetaEdge API base URL"
 ---
 
 # Thetix Skill
