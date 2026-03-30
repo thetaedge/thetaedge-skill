@@ -19,16 +19,8 @@ allowed-tools:
   - Bash
   - Read
   - WebFetch
-metadata:
-  env:
-    THETAEDGE_API_KEY:
-      required: true
-      description: "ThetaEdge API key (get from Profile > API Keys)"
-      format: "te_*"
-    THETAEDGE_API_BASE:
-      required: false
-      default: "https://api.thetaedge.ai"
-      description: "ThetaEdge API base URL"
+compatibility: "Requires THETAEDGE_API_KEY (get from Profile > API Keys). Optional: THETAEDGE_API_BASE (defaults to https://api.thetaedge.ai)."
+metadata: {"openclaw":{"requires":{"env":["THETAEDGE_API_KEY","THETAEDGE_API_BASE"]},"primaryEnv":"THETAEDGE_API_KEY"}}
 ---
 
 # Thetix Skill
