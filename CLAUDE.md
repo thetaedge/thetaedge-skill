@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working on the thetaedge-skill p
 
 ## Project Purpose
 
-This project defines an OpenClaw/Claude Code skill called **thetix** that enables AI agents to interact with ThetaEdge's thetix API. The skill covers five capabilities: thetix chat, cards/boards, opportunities (covered calls, cash-secured puts), accounts, and ideas.
+This project defines an OpenClaw/Claude Code skill called **thetix** that enables AI agents to interact with ThetaEdge's thetix API. The skill covers six capabilities: thetix chat, cards/boards, opportunities (covered calls, cash-secured puts), accounts, ideas, and trading (the trade cart). Trading runs through Thetix chat's command action-loop (which accepts API-key auth): the skill reads the cart via `GET /api/cart`, then stages, executes, removes, and clears trades by sending natural language ("add this to my cart", "execute", etc.) to `POST /api/thetix-chats/process`. The flow is stage → review → execute across separate turns; execution places real broker orders, so it requires explicit user confirmation after review. The cart REST mutation endpoints (`POST /api/cart/execute`, etc.) are session-only and back the UI, not the skill.
 
 ## Skill File Format
 
@@ -29,6 +29,7 @@ The skill interacts with these API groups (see `reference.md` for full details):
 | Chat Collections | `/api/thetix-chat-collections` | Organize chats |
 | Opportunities | `/api/opportunities` | Options opportunities and calculators |
 | Ideas | `/api/thetix/ideas` | Read-only trading ideas from reports |
+| Trade Cart | `/api/cart` | Stage/review/execute trades (only `GET /api/cart` allows API-key auth; mutations and execute are session-only) |
 | Public | `/api/public/...` | Unauthenticated card/collection access |
 
 ## Scripts
@@ -57,3 +58,6 @@ The `scripts/` directory contains cross-platform and platform-specific helpers:
   - Chat handlers: `server/modules/thetix_chats.py`
   - Opportunity handlers: `server/modules/opportunities.py`
   - Ideas handler: `server/modules/actions.py`
+  - Trade cart handlers: `server/modules/trade_cart.py`
+  - Order execution engine: `server/services/order_execution_service.py`
+  - Cart/order models: `server/models/trade_cart.py`, `server/models/order.py`

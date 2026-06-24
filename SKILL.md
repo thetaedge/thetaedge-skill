@@ -2,7 +2,7 @@
 name: thetix
 description: >
   ThetaEdge is an Options Intelligence Platform that empowers better trading decisions.
-  Use this skill for any finance, investing, or trading related tasks. Supports five capabilities:
+  Use this skill for any finance, investing, or trading related tasks. Supports six capabilities:
   (1) Thetix Chat — conversational AI for portfolio analysis, opportunity discussion, dashboard queries,
   market news, web search, website reading, live market data (stocks and options), calculations,
   portfolio performance, transactions, and active positions;
@@ -11,9 +11,13 @@ description: >
   (3) Opportunities — screen, calculate, and analyze covered call and cash-secured put options strategies;
   (4) Accounts — list user brokerage accounts (needed for account-scoped queries);
   (5) Ideas — retrieve AI-generated trading ideas extracted from daily and onboarding reports,
-  with priority, type, and deadline metadata.
+  with priority, type, and deadline metadata;
+  (6) Trading & the Trade Cart — stage trades into the user's review cart (via Thetix chat) and read
+  the cart's staged trades, validation warnings, and recent orders; placing/executing orders is a
+  human-in-the-loop action the user completes in the ThetaEdge app.
   Use this skill when the user asks about finance, investing, trading, portfolios, stocks, options,
-  market data, market news, positions, transactions, performance, ideas, or any related topic.
+  market data, market news, positions, transactions, performance, ideas, the trade cart, staging or
+  executing trades, or any related topic.
 user-invocable: true
 allowed-tools:
   - Bash
@@ -304,6 +308,78 @@ Returns `{ ideas: [...], summary: {...} }`.
 
 - `ideas` — Array of idea objects sorted by priority (high first) then deadline (earliest first). Each idea contains: `report_id`, `report_date`, `account_id`, `account_name`, `title`, `description`, `priority` (high/medium/low), `type` (roll/trade/monitor/other), `estimatedValue`, `deadline`, `deadline_timestamp`, and `widgets`.
 - `summary` — Aggregated counts: `total_ideas`, `by_priority`, `by_type`, and `date_range`.
+
+## Capability 6: Trading & the Trade Cart
+
+ThetaEdge has a **trade cart** — an org-shared staging area where trades are reviewed before being placed at the user's broker (via SnapTrade or a connected trading rail). The flow is: **stage → review → execute**. Trades reach the cart from ideas, opportunities, or by asking Thetix ("add this to my cart"); the user then reviews the staged trades and explicitly executes them.
+
+### What this skill can and cannot do
+
+This skill authenticates with an **API key**. Two paths reach the cart: the **cart REST API** (most methods are session-only and not available to the skill) and **Thetix chat** (Capability 1), whose command action-loop stages, executes, and clears the cart server-side and **does accept API-key auth**. So drive trading through chat, not the cart REST API:
+
+| Action | How the skill does it | Available? |
+|--------|-----------------------|------------|
+| Read the cart | `GET /api/cart` | ✅ Yes (API key allowed) |
+| Stage a trade | Thetix chat — "add this to my cart" | ✅ Yes |
+| **Execute / place orders** | Thetix chat — "execute" (after review) | ✅ Yes |
+| Remove / clear staged trades | Thetix chat — "remove the AAPL trade" / "clear my cart" | ✅ Yes |
+| Review recent orders & fills | Thetix chat — "show my recent orders" | ✅ Yes |
+| Add/modify/remove items via REST | `POST/PATCH/DELETE /api/cart/items...` | ❌ No — session-only (403) |
+| Execute via REST | `POST /api/cart/execute` | ❌ No — session-only (403); use the chat path |
+| Read/clear orders via REST | `GET/DELETE /api/cart/orders` | ❌ No — session-only (403); use the chat path |
+
+**Execution places real orders at the user's broker with real money.** Only execute when the user has reviewed the staged trades and explicitly tells you to. Never execute on your own initiative, never bundle staging and execution into one step, and always report the actual outcome the chat returns (placed / working / rejected — including the broker's reason) rather than assuming success.
+
+### Reading the cart
+
+```bash
+# Fast read (stale spec metrics) — good for a quick count/summary
+curl -s -H "Authorization: Bearer $THETAEDGE_API_KEY" "$THETAEDGE_API_BASE/api/cart"
+
+# Live read — re-prices every item to the current market mid and recomputes
+# net credit/debit, breakevens, max profit/loss, and buying-power warnings
+curl -s -H "Authorization: Bearer $THETAEDGE_API_KEY" "$THETAEDGE_API_BASE/api/cart?live=1&fresh=1"
+```
+
+Returns `{ "cart": { "id", "status", "account_id" }, "items": [...] }`. Each item includes `underlying`, `structure`, `asset_class`, `account_id`, `order_type`, `time_in_force`, `limit_price`, `estimated_cost`, `validation_status`, `validation_result` (advisory risk warnings), `source`, `added_by`, and a `metrics` object (`net_credit`, `bpr`, `max_profit`, `max_loss`, `breakevens`, `sizing_str`). Use `live=1` whenever you present numbers to the user so net/payoff/breakeven reflect the market. Surface any validation warnings (e.g. undefined risk, large buying-power use) prominently.
+
+### The stage → review → execute flow
+
+Trading runs through Thetix chat (Capability 1: submit → poll → retrieve) in **distinct turns**. The chat command loop will not stage and execute in the same turn — staging always renders the cart for review first, and execution is a separate follow-up. Mirror that:
+
+**1. Stage (turn 1).** Send a clear natural-language request; the chat agent builds the trade spec and adds it to the cart:
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $THETAEDGE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"query": "Add a covered call on AAPL, $180 strike expiring 2025-03-21, 1 contract, to my cart", "collection_id": "<collection_id>", "chat_id": "<chat_id>"}' \
+  "$THETAEDGE_API_BASE/api/thetix-chats/process"
+```
+
+Always confirm the exact trade with the user **before** staging (ticker, strike, expiration, contracts, side), and only stage what they asked for. The result contains a `cart_review` widget. You can also stage from an idea or opportunity by referencing it ("add the first idea to my cart", "stage opportunity 1234").
+
+**2. Review.** Present the staged trade(s) to the user — net credit/debit, max profit/loss, breakevens, and any validation/risk warnings (read `GET /api/cart?live=1` for live numbers, or use the `cart_review` widget). Get the user's explicit go-ahead.
+
+**3. Execute (turn 2).** Only after the user has reviewed and explicitly says to place the order, send `execute` on the **same `chat_id`** (the confirm gate reads that chat's history):
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $THETAEDGE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"query": "execute", "collection_id": "<collection_id>", "chat_id": "<chat_id>"}' \
+  "$THETAEDGE_API_BASE/api/thetix-chats/process"
+```
+
+**The server enforces a two-step confirm and never places orders blindly.** Execution only fires when the cart was shown (a `cart_review` widget) in the **immediately prior turn** of that chat. So:
+- After staging (which renders the cart), a single `execute` the next turn places the orders.
+- If you send `execute` "cold" — no cart shown in the prior turn (e.g. a fresh chat) — the server re-surfaces the cart and replies *"Review the trades below, then reply 'execute' to place the orders."* It places nothing. You must relay that review to the user and send `execute` **again** to actually place.
+
+Either way, poll and retrieve, then read the reply. When orders are placed it reports per-trade outcomes: **placed/working**, **filled** (with fill price), or **rejected** (with the broker's reason). Trades that don't go through stay staged for retry. Distinguish a "please confirm" response from a real placement, and relay the actual result faithfully — do not assume an order filled. Use account-scoped chat (`process-dashboard` with `account_id`) to review and execute only one account's staged trades.
+
+### Safety
+
+- **Real money, real broker.** Execution is irreversible — be precise and conservative.
+- Never execute on your own initiative; require an explicit user instruction after they've reviewed the cart.
+- Always confirm trade details before staging, and surface validation/risk warnings (undefined risk, large buying-power use) before recommending execution.
+- Report the true outcome the chat returns (placed / working / filled / rejected). Never claim success you haven't confirmed.
+- Trading requires a connected brokerage account that supports the order. If the chat or cart reports the account isn't connected or can't place the trade, relay that to the user and stop.
 
 ## Response Formatting
 

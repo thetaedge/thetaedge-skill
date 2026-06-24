@@ -6,13 +6,14 @@ ThetaEdge Skill for Claude Code and OpenClaw — enabling AI agents to interact 
 
 ThetaEdge is an Options Intelligence Platform. Its AI assistant, **thetix**, computes structured answers from real data — portfolio analysis, opportunity screening, covered call and cash-secured put calculations, and conversational intelligence about your positions.
 
-This skill exposes five thetix capabilities to AI agents:
+This skill exposes six thetix capabilities to AI agents:
 
 1. **Thetix Chat** — Conversational AI for portfolio analysis, market data, news, and dashboard queries
 2. **Thetix Cards & Boards** — Dashboard widgets that materialize visualizations from natural language
 3. **Opportunities** — Covered call and cash-secured put screening, calculation, and analysis
 4. **Accounts** — List user brokerage accounts
 5. **Ideas** — AI-generated trading ideas from daily and onboarding reports
+6. **Trading & the Trade Cart** — Read the user's trade cart and stage trades for review (via chat). Placing/executing orders is a human-in-the-loop action completed in the ThetaEdge app — the skill cannot execute trades.
 
 ## Getting Started
 

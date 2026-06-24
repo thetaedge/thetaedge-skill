@@ -523,6 +523,103 @@ Ideas are sorted by priority (high → medium → low), then by deadline (earlie
 
 This endpoint is **read-only** — no POST, PUT, or DELETE operations.
 
+## Trade Cart
+
+The trade cart is an **org-shared** staging area for trades before they are placed at the user's broker. The pipeline is **stage → review → execute**: every entry point (Thetix chat, ideas, opportunities, UI) stages a `CartItem`, and execution turns each item into a durable `Order` submitted to the broker.
+
+### Authentication
+
+- **Only `GET /api/cart` accepts API-key auth.** Every other cart REST method (add/modify/remove items, execute, read/clear orders, clear cart) is **session-only** — an API-key request to those returns `403 {"error": "This operation requires session authentication"}`. They back the interactive UI and are documented below for completeness, but an API-key client (including this skill) cannot call them directly.
+- **Trading via Thetix chat works with API-key auth.** The chat process endpoint (`POST /api/thetix-chats/process`, see Chat Processing above) runs a command action-loop that stages, executes, removes, and clears the cart **server-side** in response to natural language ("add this to my cart", "execute", "remove the AAPL trade", "clear my cart", "show my recent orders"). This is the path an API-key client uses to stage and place trades. The loop never executes in a report context and will not chain staging and execution in a single turn (stage in one turn, review, then `execute` in a follow-up on the same `chat_id`).
+- **Execution has a server-side two-step confirm.** `execute` only places orders when a `cart_review` widget was rendered in the **immediately prior turn** of that chat (staging renders it; so does a prior "cold" execute). A `execute` with no cart shown in the prior turn re-surfaces the cart ("Review the trades below, then reply 'execute' to place the orders.") and places nothing — the caller must send `execute` again. Because the gate reads the chat's conversation history, execute on the **same `chat_id`** used for staging.
+
+### Get Cart (API key OK)
+```
+GET /api/cart?live=<0|1>&fresh=<0|1>
+```
+Query params (optional):
+- `live` — `1`/`true` re-prices every item to the current market mid and recomputes metrics (net credit/debit, breakevens, max profit/loss, buying-power warnings). Base GET returns instant stale-spec metrics.
+- `fresh` — `1`/`true` (only meaningful with `live`) bypasses the price cache so the quote is re-fetched, not replayed from the recent poll cache.
+
+Returns:
+```json
+{
+  "cart": { "id": "uuid", "status": "open", "account_id": "uuid | null" },
+  "items": [ /* CartItem objects */ ]
+}
+```
+
+### Clear Cart (session-only)
+```
+DELETE /api/cart
+```
+Removes all items from the open cart. Returns `{ "success": true }`.
+
+### Add Cart Item (session-only)
+```
+POST /api/cart/items
+```
+Provide exactly one input mode:
+```json
+// From a stored opportunity
+{ "opportunity_id": 1234, "overrides": { "strike": 180, "expiration": "2025-03-21", "contracts": 1, "premium": 3.50 } }
+
+// From a raw trade spec
+{ "trade_spec": { /* TradeSpec dict */ }, "account_id": "uuid", "order_type": "Limit", "time_in_force": "Day", "limit_price": 3.50, "source": "ui" }
+
+// From a payoff widget (ideas path)
+{ "payoff": { "symbol": "AAPL", "current_price": 182.0, "legs": [ /* ... */ ] } }
+```
+Validates the spec, that it has executable legs, and that any `account_id` belongs to the org. Returns `{ "item": <CartItem> }`. Errors: 400 (invalid spec/payoff/no legs), 403 (foreign account / not session auth), 404 (opportunity not found).
+
+### Update Cart Item (session-only)
+```
+PATCH /api/cart/items/<item_public_id>
+```
+```json
+{ "order_type": "Limit", "time_in_force": "Day", "limit_price": 3.40, "account_id": "uuid", "contracts": 2, "shares": 200 }
+```
+Any field is optional. `contracts` (options) or `shares` (equity) inline-resizes the staged trade. Any edit resets validation to unchecked. Returns `{ "item": <CartItem> }`. 404 if not found.
+
+### Remove Cart Item (session-only)
+```
+DELETE /api/cart/items/<item_public_id>
+```
+Returns `{ "success": true }`. 404 if not found.
+
+### Execute Cart (session-only)
+```
+POST /api/cart/execute
+```
+```json
+{ "items": ["<item_public_id>", "..."] }
+```
+`items` is optional — empty/absent executes **all** items in the open cart. Each item is executed independently into an `Order` (one failure never cascades). Successfully placed items archive to an executed cart; rejected/errored items stay staged for retry.
+
+Returns:
+```json
+{ "orders": [ /* Order object, or { "item_id": "uuid", "error": "message" } per failed item */ ] }
+```
+This REST endpoint requires **session auth** (API keys are forbidden) — it backs the cart's Execute button. **API-key clients execute via Thetix chat instead**: send `execute` to `POST /api/thetix-chats/process` after staging and review (see "Trading via Thetix chat" above). The chat path runs the same `OrderExecutionService.execute_item` pipeline server-side and reports per-trade outcomes (placed/working/filled/rejected).
+
+### Get Recent Orders (session-only)
+```
+GET /api/cart/orders
+```
+Returns up to 50 recent non-dismissed orders for the org (newest first): `{ "orders": [ <Order>, ... ] }`. Lazily reconciles open orders against the broker (throttled per-org). The frontend polls this every 5s while orders are live.
+
+### Clear Recent Orders (session-only)
+```
+DELETE /api/cart/orders
+```
+Marks all **terminal** orders as dismissed (hidden, kept in DB). Working orders stay visible. Returns `{ "success": true }`.
+
+### Clear One Order (session-only)
+```
+DELETE /api/cart/orders/<order_public_id>
+```
+Dismisses a single order. 400 if the order is not terminal ("Can't clear an order that's still working"), 404 if not found.
+
 ## Public Endpoints (No Auth)
 
 ### Public Card Collections
@@ -662,6 +759,103 @@ Same request/response as the authenticated covered call calculator (uses `underl
   date_range: { start: string (ISO 8601), end: string (ISO 8601) }
 }
 ```
+
+### Cart Object
+```
+{
+  id: string (UUID)                     # public_id of the open cart
+  status: "open" | "executing" | "executed" | "abandoned"
+  account_id: string | null             # default target account for the cart
+}
+```
+
+### Cart Item Object
+```
+{
+  id: string (UUID)                     # public_id of the item
+  underlying: string                    # ticker
+  structure: string                     # e.g. covered_call, csp, bull_put_spread (see TradeSpec)
+  asset_class: "equity" | "option" | "multi_leg_option" | null
+  trade_spec: object                    # serialized TradeSpec (see below)
+  account_id: string | null             # per-item account override
+  order_type: string                    # default "Limit"
+  time_in_force: string                 # default "Day"
+  limit_price: number | null
+  price_effect: "CREDIT" | "DEBIT" | "EVEN" | null
+  estimated_cost: number | null
+  validation_status: "UNCHECKED" | "VALID" | "INVALID" | "EXPIRED" | null
+  validation_result: object             # advisory risk warnings (e.g. undefined_risk, large_buying_power_use)
+  source: "chat" | "opportunity" | "idea" | "ui" | "api" | null
+  opportunity_id: int | null
+  order_id: int | null                  # set once executed
+  added_by_user_id: int
+  added_by: { id, name, email, profile_picture } | null   # org-shared cart attribution
+  metrics: {                            # live with ?live=1, else from stale spec
+    net_credit, credit_str, bpr, max_profit, max_loss,
+    breakevens, sizing_str, spot, iv, legs, payoff_legs
+  }
+}
+```
+
+### Order Object
+```
+{
+  id: string (UUID)                     # public_id
+  status: "pending" | "working" | "partially_filled" | "filled" | "cancelled" | "rejected" | null
+  underlying: string
+  structure: string
+  asset_class: "equity" | "option" | "multi_leg_option" | null
+  side_summary: string                  # human-readable side description
+  account_id: string | null
+  broker_order_id: string | null
+  limit_price: number | null            # net limit for multi-leg
+  price_effect: "CREDIT" | "DEBIT" | "EVEN" | null
+  filled_price: number | null
+  filled_quantity: number | null
+  error_message: string | null
+  submitted_at: string (ISO 8601) | null
+  filled_at: string (ISO 8601) | null
+  legs: [
+    {
+      ticker: string                    # OCC option symbol or equity symbol
+      action: "BUY" | "SELL" | "BUY_TO_OPEN" | "SELL_TO_OPEN" | "BUY_TO_CLOSE" | "SELL_TO_CLOSE" | null
+      quantity: number
+      filled_quantity: number | null
+      filled_price: number | null
+      status: string | null
+    }
+  ]
+}
+```
+
+Terminal order statuses (cannot regress, safe to clear): `filled`, `cancelled`, `rejected`.
+
+### TradeSpec Object
+The canonical description of a single trade, stored in `CartItem.trade_spec`. The skill normally lets Thetix chat build this; it is documented for reading staged items.
+```
+{
+  symbol: string                        # underlying ticker (exactly one per spec)
+  spot: number                          # underlying spot at build time
+  structure: string                     # one of: long_stock, short_stock, csp, covered_call,
+                                        #   long_call, long_put, short_call_naked, bull_put_spread,
+                                        #   bear_call_spread, bull_call_spread, bear_put_spread,
+                                        #   iron_condor, iron_butterfly, calendar, diagonal,
+                                        #   straddle, strangle, ratio, collar, custom
+  legs: [
+    // OptionLeg
+    { kind: "option", action: "sell_open"|"buy_open"|"sell_close"|"buy_close",
+      option_type: "call"|"put", strike: number, contracts: int,
+      premium: number, expiration: "YYYY-MM-DD", delta?, iv?, contract_symbol?, bid?, ask? },
+    // StockLeg
+    { kind: "stock", action: "buy"|"sell", shares: int, price?, bid?, ask? }
+  ]
+  iv: number | null
+  next_earnings_date: string | null     # YYYY-MM-DD
+  note: string
+  overrides: object                     # for structure="custom": max_profit, max_loss, bpr, breakevens
+}
+```
+Derived metrics (net credit, bpr, max profit/loss, breakevens) are recomputed, never stored on the spec.
 
 ### Collection Object
 ```
