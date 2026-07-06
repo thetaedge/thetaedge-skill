@@ -23,7 +23,7 @@ allowed-tools:
   - Bash
   - Read
   - WebFetch
-compatibility: "Requires THETAEDGE_API_KEY (get from Profile > API Keys). Optional: THETAEDGE_API_BASE (defaults to https://api.thetaedge.ai)."
+compatibility: "Requires THETAEDGE_API_KEY (get from Profile > API Keys). Optional: THETAEDGE_API_BASE (defaults to https://api.thetix.ai)."
 metadata: {"openclaw":{"requires":{"env":["THETAEDGE_API_KEY","THETAEDGE_API_BASE"]},"primaryEnv":"THETAEDGE_API_KEY"}}
 ---
 
@@ -37,14 +37,14 @@ The skill needs two values: `THETAEDGE_API_KEY` and `THETAEDGE_API_BASE`.
 
 ### Loading credentials
 
-1. **Check shell environment first** — Run `echo $THETAEDGE_API_KEY` in Bash. If both vars are already set, skip to the curl pattern below. If `THETAEDGE_API_BASE` is not set, default to `https://api.thetaedge.ai`.
+1. **Check shell environment first** — Run `echo $THETAEDGE_API_KEY` in Bash. If both vars are already set, skip to the curl pattern below. If `THETAEDGE_API_BASE` is not set, default to `https://api.thetix.ai`.
 2. **Read from config file** — If the vars are not set, check these locations in order:
    - `~/.openclaw/openclaw.json` — Extract `THETAEDGE_API_KEY` and `THETAEDGE_API_BASE` from `skills.entries.thetix.env`
    - `~/.config/thetaedge/credentials.json` — Extract `api_key` and `api_base`
    Then export them in Bash:
    ```bash
    export THETAEDGE_API_KEY="<value from config>"
-   export THETAEDGE_API_BASE="<value from config>"  # defaults to https://api.thetaedge.ai
+   export THETAEDGE_API_BASE="<value from config>"  # defaults to https://api.thetix.ai
    ```
 3. **If neither works** — Ask the user to set up credentials. They should go to their ThetaEdge **Profile > API Keys** page to create a key, then configure it:
 
@@ -62,7 +62,7 @@ The skill needs two values: `THETAEDGE_API_KEY` and `THETAEDGE_API_BASE`.
    {
      "skills": { "entries": { "thetix": { "enabled": true, "env": {
        "THETAEDGE_API_KEY": "te_your_key_here",
-       "THETAEDGE_API_BASE": "https://api.thetaedge.ai"
+       "THETAEDGE_API_BASE": "https://api.thetix.ai"
      }}}}
    }
    ```
@@ -71,7 +71,7 @@ The skill needs two values: `THETAEDGE_API_KEY` and `THETAEDGE_API_BASE`.
    ```json
    {
      "api_key": "te_your_key_here",
-     "api_base": "https://api.thetaedge.ai"
+     "api_base": "https://api.thetix.ai"
    }
    ```
 

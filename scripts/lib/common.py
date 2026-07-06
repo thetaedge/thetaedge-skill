@@ -15,7 +15,7 @@ from pathlib import Path
 # Constants
 # ---------------------------------------------------------------------------
 
-DEFAULT_API_BASE = "https://api.thetaedge.ai"
+DEFAULT_API_BASE = "https://api.thetix.ai"
 DEFAULT_CLONE_URL = "https://github.com/thetaedge/thetaedge-skill.git"
 
 TARGETS = ("claude-code", "openclaw", "generic")
